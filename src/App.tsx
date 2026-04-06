@@ -8,20 +8,32 @@ const featuredRifas = [
   {
     emoji: '💻',
     title: 'Notebook Gamer RTX 4060',
-    description: 'Prêmio em destaque com números limitados',
-    status: 'Em andamento'
+    description: 'Notebook gamer com RTX 4060, 16GB RAM, SSD 512GB. Perfeito para jogos e trabalho.',
+    numbersSold: 520,
+    numbersTotal: 800,
+    availableNumbers: 200,
+    date: '19/05/2026',
+    image: 'https://via.placeholder.com/300x200?text=Notebook+RTX+4060'
   },
   {
     emoji: '📱',
-    title: 'iPhone 15 Pro Max 256GB',
-    description: 'iPhone novo, na caixa, com nota fiscal e garantia de 1 ano.',
-    status: 'Fechado'
+    title: 'iPhone 15 Pro Max',
+    description: 'Smartphone topo de linha com câmera 48MP e processador A18 Pro.',
+    numbersSold: 450,
+    numbersTotal: 1000,
+    availableNumbers: 350,
+    date: '25/05/2026',
+    image: 'https://via.placeholder.com/300x200?text=iPhone+15+Pro'
   },
   {
     emoji: '📺',
     title: 'Smart TV 65" 4K',
-    description: 'Sorteio especial com tela grande e som imersivo.',
-    status: 'Concluído'
+    description: 'Televisão de 65 polegadas com resolução 4K e Smart TV integrada.',
+    numbersSold: 680,
+    numbersTotal: 800,
+    availableNumbers: 120,
+    date: '30/05/2026',
+    image: 'https://via.placeholder.com/300x200?text=Smart+TV+65'
   }
 ];
 
@@ -53,7 +65,6 @@ function App() {
 
           <div className="mt-8 flex justify-center">
             <div className="flex w-full max-w-xl items-center gap-3 rounded-3xl border border-black/10 bg-black/5 px-5 py-4 shadow-sm">
-              <span className="text-black/50">🔎</span>
               <input
                 type="text"
                 placeholder="Buscar sorteios..."
@@ -65,15 +76,44 @@ function App() {
 
         <section className="grid gap-6 lg:grid-cols-3">
           {featuredRifas.map((rifa) => (
-            <article key={rifa.title} className="rounded-[28px] border border-black/10 bg-white p-6 shadow-sm">
-              <div className="flex items-center justify-between gap-4">
+            <article key={rifa.title} className="overflow-hidden rounded-[28px] border border-black/10 bg-white shadow-sm transition-shadow hover:shadow-md">
+              <div className="aspect-video w-full overflow-hidden bg-black/10">
+                <img src={rifa.image} alt={rifa.title} className="h-full w-full object-cover" />
+              </div>
+
+              <div className="flex flex-col gap-4 p-6">
                 <div>
                   <h3 className="flex items-center gap-2 text-xl font-semibold text-black">
                     <span>{rifa.emoji}</span> {rifa.title}
                   </h3>
                   <p className="mt-2 text-sm text-black/70">{rifa.description}</p>
                 </div>
-                <div className="rounded-3xl bg-brand-50 px-4 py-2 text-sm font-semibold text-brand-700">{rifa.status}</div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-black/60">Números vendidos</span>
+                    <span className="font-semibold text-black">{rifa.numbersSold} / {rifa.numbersTotal}</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-black/10">
+                    <div
+                      className="h-full rounded-full bg-black transition-all"
+                      style={{ width: `${(rifa.numbersSold / rifa.numbersTotal) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-black/60">
+                  <span>📅</span>
+                  <span>Sorteio: {rifa.date}</span>
+                </div>
+
+                <div className="rounded-2xl bg-brand-50 px-3 py-2 text-center">
+                  <span className="text-sm font-semibold text-brand-700">{rifa.availableNumbers} números disponíveis</span>
+                </div>
+
+                <button className="mt-2 w-full rounded-2xl bg-black py-3 font-semibold text-white transition-opacity hover:bg-black/90">
+                  Participar
+                </button>
               </div>
             </article>
           ))}
