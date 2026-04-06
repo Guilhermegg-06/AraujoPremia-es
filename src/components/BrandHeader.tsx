@@ -1,4 +1,4 @@
-import { BrandIcon, CartIcon } from './Icons';
+import { CartIcon } from './Icons';
 
 type BrandHeaderProps = {
   cartCount: number;
@@ -14,8 +14,12 @@ export function BrandHeader({ cartCount, onGoHome, onOpenCart }: BrandHeaderProp
           <div />
           <button type="button" onClick={onGoHome} className="justify-self-center text-center">
             <div className="flex flex-col items-center gap-2">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-200 bg-brand-50 shadow-sm">
-                <BrandIcon />
+              <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-brand-200 bg-brand-50 shadow-sm">
+                <img
+                  src="/logo-bonequinho.png"
+                  alt="Logo Araujo Premiacoes"
+                  className="h-full w-full object-cover"
+                />
               </div>
               <div>
                 <p className="text-[11px] uppercase tracking-[0.35em] text-stone-500">Araujo premiacoes</p>
