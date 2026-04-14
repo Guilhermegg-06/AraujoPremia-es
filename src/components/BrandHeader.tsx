@@ -3,15 +3,25 @@ import { CartIcon } from './Icons';
 type BrandHeaderProps = {
   cartCount: number;
   onGoHome: () => void;
+  onOpenAccount: () => void;
   onOpenCart: () => void;
 };
 
-export function BrandHeader({ cartCount, onGoHome, onOpenCart }: BrandHeaderProps) {
+export function BrandHeader({ cartCount, onGoHome, onOpenAccount, onOpenCart }: BrandHeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-black/5 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-          <div />
+          <div className="justify-self-start">
+            <button
+              type="button"
+              onClick={onOpenAccount}
+              className="inline-flex items-center rounded-full border border-black/10 bg-white px-4 py-2 text-sm font-semibold text-stone-800 shadow-sm transition hover:bg-stone-50"
+            >
+              Usuario
+            </button>
+          </div>
+
           <button type="button" onClick={onGoHome} className="justify-self-center text-center">
             <div className="flex flex-col items-center gap-2">
               <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-brand-200 bg-brand-50 shadow-sm">
@@ -27,6 +37,7 @@ export function BrandHeader({ cartCount, onGoHome, onOpenCart }: BrandHeaderProp
               </div>
             </div>
           </button>
+
           <div className="justify-self-end">
             <button
               type="button"

@@ -7,6 +7,7 @@
 | `package-lock.json` | Trava as versoes instaladas das dependencias do npm. |
 | `index.html` | HTML base onde o app React e montado pelo Vite. |
 | `vite.config.ts` | Configura o Vite para desenvolvimento e build do frontend. |
+| `vercel.json` | Configura o fallback de rotas para abrir caminhos como `/admin` no deploy. |
 | `tsconfig.json` | Configura o TypeScript do codigo principal em `src`. |
 | `tsconfig.node.json` | Configura o TypeScript para arquivos de ambiente Node, como o Vite. |
 | `tsconfig.test.json` | Configura a compilacao dos testes do backend. |

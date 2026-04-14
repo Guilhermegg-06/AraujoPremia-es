@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createBackend } from './backend/services';
 import { AdminDashboard } from './components/AdminDashboard';
 import { AuthPanel } from './components/AuthPanel';
@@ -43,6 +43,37 @@ const initialRaffleInput: RaffleInput = {
 const toDateTimeLocal = (value: string) => value ? value.slice(0, 16) : '';
 const fromDateTimeLocal = (value: string) => value ? new Date(value).toISOString() : '';
 
+const pageFromPath = (path: string): AppPage => {
+  if (path.startsWith('/admin')) {
+    return 'admin';
+  }
+
+  if (path.startsWith('/usuario')) {
+    return 'account';
+  }
+
+  if (path.startsWith('/carrinho')) {
+    return 'cart';
+  }
+
+  if (path.startsWith('/sorteio')) {
+    return 'detail';
+  }
+
+  return 'home';
+};
+
+const pathFromPage = (target: AppPage) => {
+  const paths: Record<AppPage, string> = {
+    home: '/',
+    detail: '/sorteio',
+    cart: '/carrinho',
+    account: '/usuario',
+    admin: '/admin'
+  };
+
+  return paths[target];
+};
 const buildDefaultAdminForm = (): AdminForm => {
   const startsAt = new Date();
   const endsAt = new Date(startsAt);
@@ -75,7 +106,7 @@ function App() {
   }, []);
 
   const initialBackendRaffle = backend.raffles.listRaffles()[0] ?? null;
-  const [page, setPage] = useState<AppPage>('home');
+  const [page, setPage] = useState<AppPage>(() => pageFromPath(window.location.pathname));
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [session, setSession] = useState<Session | null>(null);
@@ -121,18 +152,41 @@ function App() {
 
   const refresh = () => setVersion((current) => current + 1);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      setPage(pageFromPath(window.location.pathname));
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (target: AppPage) => {
+    const nextPath = pathFromPage(target);
+
+    if (window.location.pathname !== nextPath) {
+      window.history.pushState({}, '', nextPath);
+    }
+
+    setPage(target);
+  };
   const handleGoHome = () => {
-    setPage('home');
+    navigateTo('home');
     setSelectedNumbers([]);
   };
 
   const handleOpenCart = () => {
-    setPage('cart');
+    navigateTo('cart');
+  };
+
+  const handleOpenAccount = () => {
+    navigateTo('account');
   };
 
   const handleOpenRaffle = () => {
     setSelectedNumbers([]);
-    setPage('detail');
+    navigateTo('detail');
   };
 
   const handleToggleNumber = (value: number) => {
@@ -167,7 +221,7 @@ function App() {
     });
 
     setSelectedNumbers([]);
-    setPage('cart');
+    navigateTo('cart');
   };
 
   const handleBuyNow = () => {
@@ -206,7 +260,7 @@ function App() {
     setAuthMessage('Sessao encerrada.');
     setUserMessage('');
     setAdminMessage('');
-    setPage('account');
+    navigateTo('account');
   };
 
   const handleParticipate = (raffleId: string) => {
@@ -310,20 +364,12 @@ function App() {
     }, 'Sorteio excluido.');
   };
 
-  const navButtonClass = (target: AppPage) =>
-    `rounded-full px-4 py-2 text-sm font-semibold transition ${page === target ? 'bg-stone-950 text-white' : 'bg-white text-stone-700 hover:bg-stone-50'}`;
 
   return (
     <div className="min-h-screen bg-transparent text-stone-950">
-      <BrandHeader cartCount={cartCount} onGoHome={handleGoHome} onOpenCart={handleOpenCart} />
+      <BrandHeader cartCount={cartCount} onGoHome={handleGoHome} onOpenAccount={handleOpenAccount} onOpenCart={handleOpenCart} />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        <nav className="mb-6 flex flex-wrap gap-2 rounded-[28px] border border-black/5 bg-white/70 p-2 shadow-sm backdrop-blur">
-          <button type="button" className={navButtonClass('home')} onClick={handleGoHome}>Sorteio</button>
-          <button type="button" className={navButtonClass('account')} onClick={() => setPage('account')}>Usuario</button>
-          <button type="button" className={navButtonClass('admin')} onClick={() => setPage('admin')}>Admin</button>
-          <button type="button" className={navButtonClass('cart')} onClick={handleOpenCart}>Carrinho</button>
-        </nav>
 
         {page === 'home' && (
           <HomePage raffle={raffle} availableNumbers={availableNumbers} onOpenRaffle={handleOpenRaffle} onOpenCart={handleOpenCart} />
