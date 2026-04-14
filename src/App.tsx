@@ -10,13 +10,21 @@ import { RaffleDetailPage } from './components/RaffleDetailPage';
 import { UserDashboard } from './components/UserDashboard';
 import { MAX_SELECTION, SELLER_PHONE, raffle } from './data/raffle';
 import type { CartItem } from './types/raffle';
-import type { PublicUser, RaffleInput, RaffleStats, Session, UserParticipation } from './backend/domain';
+import type { Raffle, RaffleInput, RaffleStats, Session, UserParticipation } from './backend/domain';
 import { buildNumberGrid, getAvailableNumbers, mergeNumbers } from './utils/raffle';
 import { buildWhatsAppUrl } from './utils/whatsapp';
 
 type AppPage = 'home' | 'detail' | 'cart' | 'account' | 'admin';
 
 type AuthMode = 'login' | 'register';
+
+type AdminForm = {
+  title: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  winnerCount: number;
+};
 
 const adminCredentials = {
   name: 'Administrador Araujo',
@@ -32,8 +40,30 @@ const initialRaffleInput: RaffleInput = {
   winnerCount: 1
 };
 
-const toDateTimeLocal = (value: string) => value.slice(0, 16);
-const fromDateTimeLocal = (value: string) => new Date(value).toISOString();
+const toDateTimeLocal = (value: string) => value ? value.slice(0, 16) : '';
+const fromDateTimeLocal = (value: string) => value ? new Date(value).toISOString() : '';
+
+const buildDefaultAdminForm = (): AdminForm => {
+  const startsAt = new Date();
+  const endsAt = new Date(startsAt);
+  endsAt.setDate(startsAt.getDate() + 7);
+
+  return {
+    title: '',
+    description: '',
+    startsAt: toDateTimeLocal(startsAt.toISOString()),
+    endsAt: toDateTimeLocal(endsAt.toISOString()),
+    winnerCount: 1
+  };
+};
+
+const toAdminForm = (target: Raffle): AdminForm => ({
+  title: target.title,
+  description: target.description,
+  startsAt: toDateTimeLocal(target.startsAt),
+  endsAt: toDateTimeLocal(target.endsAt),
+  winnerCount: target.winnerCount
+});
 
 function App() {
   const backend = useMemo(() => {
@@ -44,6 +74,7 @@ function App() {
     return services;
   }, []);
 
+  const initialBackendRaffle = backend.raffles.listRaffles()[0] ?? null;
   const [page, setPage] = useState<AppPage>('home');
   const [selectedNumbers, setSelectedNumbers] = useState<number[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -53,29 +84,27 @@ function App() {
   const [userMessage, setUserMessage] = useState('');
   const [adminMessage, setAdminMessage] = useState('');
   const [version, setVersion] = useState(0);
+  const [selectedBackendRaffleId, setSelectedBackendRaffleId] = useState<string | null>(initialBackendRaffle?.id ?? null);
   const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
-  const [adminForm, setAdminForm] = useState({
-    title: initialRaffleInput.title,
-    description: initialRaffleInput.description,
-    startsAt: toDateTimeLocal(initialRaffleInput.startsAt),
-    endsAt: toDateTimeLocal(initialRaffleInput.endsAt),
-    winnerCount: initialRaffleInput.winnerCount
-  });
+  const [adminForm, setAdminForm] = useState<AdminForm>(() => initialBackendRaffle ? toAdminForm(initialBackendRaffle) : buildDefaultAdminForm());
 
   const appRaffles = backend.raffles.listRaffles();
-  const activeBackendRaffle = appRaffles[0] ?? null;
+  const selectedAdminRaffle = selectedBackendRaffleId
+    ? appRaffles.find((item) => item.id === selectedBackendRaffleId) ?? null
+    : null;
+  const visibleUserRaffles = appRaffles.filter((item) => item.status !== 'draft');
   const adminToken = session?.user.role === 'admin' ? session.token : '';
   const activeNumbers = useMemo(() => buildNumberGrid(raffle), []);
   const availableNumbers = getAvailableNumbers(raffle);
   const cartCount = cartItems.reduce((total, item) => total + item.numbers.length, 0);
   const cartTotal = cartItems.reduce((total, item) => total + raffle.price * item.numbers.length, 0);
 
-  const backendStats: RaffleStats | null = adminToken && activeBackendRaffle
-    ? backend.raffles.getStats(adminToken, activeBackendRaffle.id)
+  const adminStats: RaffleStats | null = adminToken && selectedAdminRaffle
+    ? backend.raffles.getStats(adminToken, selectedAdminRaffle.id)
     : null;
 
-  const backendParticipants = adminToken && activeBackendRaffle
-    ? backend.raffles.listParticipants(adminToken, activeBackendRaffle.id)
+  const backendParticipants = adminToken && selectedAdminRaffle
+    ? backend.raffles.listParticipants(adminToken, selectedAdminRaffle.id)
     : [];
 
   const userParticipations: UserParticipation[] = session?.user.role === 'user'
@@ -180,14 +209,14 @@ function App() {
     setPage('account');
   };
 
-  const handleParticipate = () => {
-    if (!session || !activeBackendRaffle) {
+  const handleParticipate = (raffleId: string) => {
+    if (!session) {
       setUserMessage('Entre como usuario para participar.');
       return;
     }
 
     try {
-      backend.raffles.participate(session.token, activeBackendRaffle.id);
+      backend.raffles.participate(session.token, raffleId);
       setUserMessage('Participacao confirmada com sucesso.');
       refresh();
     } catch (error) {
@@ -195,7 +224,7 @@ function App() {
     }
   };
 
-  const updateAdminForm = (field: keyof typeof adminForm, value: string | number) => {
+  const updateAdminForm = (field: keyof AdminForm, value: string | number) => {
     setAdminForm((current) => ({ ...current, [field]: value }));
   };
 
@@ -206,6 +235,24 @@ function App() {
     endsAt: fromDateTimeLocal(adminForm.endsAt),
     winnerCount: Number(adminForm.winnerCount)
   });
+
+  const handleSelectAdminRaffle = (raffleId: string) => {
+    const target = appRaffles.find((item) => item.id === raffleId);
+
+    if (!target) {
+      return;
+    }
+
+    setSelectedBackendRaffleId(target.id);
+    setAdminForm(toAdminForm(target));
+    setAdminMessage('');
+  };
+
+  const handleStartNewRaffle = () => {
+    setSelectedBackendRaffleId(null);
+    setAdminForm(buildDefaultAdminForm());
+    setAdminMessage('Preencha os dados para criar um novo sorteio.');
+  };
 
   const handleSaveAdminRaffle = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -218,11 +265,14 @@ function App() {
     try {
       const input = buildAdminInput();
 
-      if (activeBackendRaffle) {
-        backend.raffles.updateRaffle(adminToken, activeBackendRaffle.id, input);
+      if (selectedAdminRaffle) {
+        const updated = backend.raffles.updateRaffle(adminToken, selectedAdminRaffle.id, input);
+        setAdminForm(toAdminForm(updated));
         setAdminMessage('Sorteio atualizado com sucesso.');
       } else {
-        backend.raffles.createRaffle(adminToken, input);
+        const created = backend.raffles.createRaffle(adminToken, input);
+        setSelectedBackendRaffleId(created.id);
+        setAdminForm(toAdminForm(created));
         setAdminMessage('Sorteio criado com sucesso.');
       }
 
@@ -242,12 +292,22 @@ function App() {
     }
   };
 
-  const requireActiveRaffle = () => {
-    if (!adminToken || !activeBackendRaffle) {
-      throw new Error('Entre como administrador e crie um sorteio.');
+  const requireSelectedAdminRaffle = () => {
+    if (!adminToken || !selectedAdminRaffle) {
+      throw new Error('Entre como administrador e selecione um sorteio.');
     }
 
-    return activeBackendRaffle;
+    return selectedAdminRaffle;
+  };
+
+  const handleDeleteAdminRaffle = () => {
+    runAdminAction(() => {
+      const target = requireSelectedAdminRaffle();
+      backend.raffles.deleteRaffle(adminToken, target.id);
+      const remaining = backend.raffles.listRaffles().find((item) => item.id !== target.id) ?? null;
+      setSelectedBackendRaffleId(remaining?.id ?? null);
+      setAdminForm(remaining ? toAdminForm(remaining) : buildDefaultAdminForm());
+    }, 'Sorteio excluido.');
   };
 
   const navButtonClass = (target: AppPage) =>
@@ -308,8 +368,7 @@ function App() {
             />
             <UserDashboard
               session={session}
-              raffleTitle={activeBackendRaffle?.title ?? 'Nenhum sorteio ativo'}
-              stats={backendStats}
+              raffles={visibleUserRaffles}
               participations={userParticipations}
               userMessage={userMessage}
               onParticipate={handleParticipate}
@@ -332,19 +391,22 @@ function App() {
             <AdminDashboard
               session={session}
               raffles={appRaffles}
-              activeRaffle={activeBackendRaffle}
-              stats={backendStats}
+              selectedRaffleId={selectedBackendRaffleId}
+              activeRaffle={selectedAdminRaffle}
+              stats={adminStats}
               participants={backendParticipants}
               adminMessage={adminMessage}
               form={adminForm}
               onChangeForm={updateAdminForm}
+              onSelectRaffle={handleSelectAdminRaffle}
+              onStartNew={handleStartNewRaffle}
               onSubmit={handleSaveAdminRaffle}
-              onOpen={() => runAdminAction(() => backend.raffles.openRaffle(adminToken, requireActiveRaffle().id), 'Sorteio aberto.')}
-              onClose={() => runAdminAction(() => backend.raffles.closeRaffle(adminToken, requireActiveRaffle().id), 'Sorteio fechado.')}
-              onDraw={() => runAdminAction(() => backend.raffles.drawWinners(adminToken, requireActiveRaffle().id), 'Ganhadores sorteados automaticamente.')}
-              onComplete={() => runAdminAction(() => backend.raffles.completeRaffle(adminToken, requireActiveRaffle().id), 'Sorteio concluido.')}
-              onDelete={() => runAdminAction(() => backend.raffles.deleteRaffle(adminToken, requireActiveRaffle().id), 'Sorteio excluido.')}
-              onMarkWinner={(userId) => runAdminAction(() => backend.raffles.markWinner(adminToken, requireActiveRaffle().id, userId), 'Ganhador marcado manualmente.')}
+              onOpen={() => runAdminAction(() => backend.raffles.openRaffle(adminToken, requireSelectedAdminRaffle().id), 'Sorteio aberto.')}
+              onClose={() => runAdminAction(() => backend.raffles.closeRaffle(adminToken, requireSelectedAdminRaffle().id), 'Sorteio fechado.')}
+              onDraw={() => runAdminAction(() => backend.raffles.drawWinners(adminToken, requireSelectedAdminRaffle().id), 'Ganhadores sorteados automaticamente.')}
+              onComplete={() => runAdminAction(() => backend.raffles.completeRaffle(adminToken, requireSelectedAdminRaffle().id), 'Sorteio concluido.')}
+              onDelete={handleDeleteAdminRaffle}
+              onMarkWinner={(userId) => runAdminAction(() => backend.raffles.markWinner(adminToken, requireSelectedAdminRaffle().id, userId), 'Ganhador marcado manualmente.')}
             />
           </div>
         )}

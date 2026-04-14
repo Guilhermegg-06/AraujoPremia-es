@@ -152,6 +152,7 @@ export class RaffleService {
   openRaffle(adminToken: string, raffleId: string): Raffle {
     this.auth.requireAdmin(adminToken);
     const raffle = this.findRaffle(raffleId);
+    this.ensureNotCompleted(raffle);
     raffle.status = 'open';
     raffle.updatedAt = now();
     return raffle;
@@ -160,6 +161,7 @@ export class RaffleService {
   closeRaffle(adminToken: string, raffleId: string): Raffle {
     this.auth.requireAdmin(adminToken);
     const raffle = this.findRaffle(raffleId);
+    this.ensureNotCompleted(raffle);
     raffle.status = 'closed';
     raffle.updatedAt = now();
     return raffle;
@@ -233,6 +235,7 @@ export class RaffleService {
   markWinner(adminToken: string, raffleId: string, userId: string): Winner {
     this.auth.requireAdmin(adminToken);
     const raffle = this.findRaffle(raffleId);
+    this.ensureNotCompleted(raffle);
     const participant = this.db.data.participants.find(
       (candidate) => candidate.raffleId === raffleId && candidate.userId === userId
     );
@@ -266,6 +269,7 @@ export class RaffleService {
   drawWinners(adminToken: string, raffleId: string): Winner[] {
     this.auth.requireAdmin(adminToken);
     const raffle = this.findRaffle(raffleId);
+    this.ensureNotCompleted(raffle);
     const currentWinners = this.getWinners(raffleId);
     const remainingSlots = raffle.winnerCount - currentWinners.length;
 
@@ -357,6 +361,12 @@ export class RaffleService {
 
     if (!Number.isInteger(input.winnerCount) || input.winnerCount < 1) {
       throw new Error('Quantidade de ganhadores deve ser maior que zero.');
+    }
+  }
+
+  private ensureNotCompleted(raffle: Raffle) {
+    if (raffle.status === 'completed') {
+      throw new Error('Sorteio concluido nao pode ser alterado.');
     }
   }
 

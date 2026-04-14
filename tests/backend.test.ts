@@ -144,6 +144,42 @@ test('administrador conclui e exclui sorteio', () => {
   assert(raffles.listRaffles().length === 0, 'deve excluir sorteio e dados relacionados');
 });
 
+test('usuario escolhe entre multiplos sorteios e acompanha cada participacao', () => {
+  const { auth, raffles } = createBackend();
+  const admin = auth.createAdmin({ name: 'Admin', email: 'admin@test.com', password: '123456' });
+  const user = auth.registerUser({ name: 'Cliente', email: 'cliente@test.com', password: '123456' });
+  const firstRaffle = raffles.createRaffle(admin.token, { ...raffleInput, title: 'Primeiro sorteio' });
+  const secondRaffle = raffles.createRaffle(admin.token, { ...raffleInput, title: 'Segundo sorteio' });
+
+  raffles.openRaffle(admin.token, firstRaffle.id);
+  raffles.openRaffle(admin.token, secondRaffle.id);
+  raffles.participate(user.token, secondRaffle.id);
+  raffles.participate(user.token, firstRaffle.id);
+
+  const participations = raffles.getUserParticipations(user.token);
+  assert(participations.length === 2, 'usuario deve acompanhar todos os sorteios que escolheu');
+  assert(participations.some((item) => item.raffle.title === 'Primeiro sorteio'), 'historico deve incluir o primeiro sorteio');
+  assert(participations.some((item) => item.raffle.title === 'Segundo sorteio'), 'historico deve incluir o segundo sorteio');
+});
+
+test('sorteio concluido bloqueia alteracoes de status e ganhadores', () => {
+  const { auth, raffles } = createBackend();
+  const admin = auth.createAdmin({ name: 'Admin', email: 'admin@test.com', password: '123456' });
+  const winner = auth.registerUser({ name: 'Ganhador', email: 'ganhador@test.com', password: '123456' });
+  const other = auth.registerUser({ name: 'Outro', email: 'outro@test.com', password: '123456' });
+  const raffle = raffles.createRaffle(admin.token, raffleInput);
+
+  raffles.openRaffle(admin.token, raffle.id);
+  raffles.participate(winner.token, raffle.id);
+  raffles.participate(other.token, raffle.id);
+  raffles.markWinner(admin.token, raffle.id, winner.user.id);
+  raffles.completeRaffle(admin.token, raffle.id);
+
+  assertThrows(() => raffles.openRaffle(admin.token, raffle.id), 'nao deve reabrir sorteio concluido');
+  assertThrows(() => raffles.closeRaffle(admin.token, raffle.id), 'nao deve fechar novamente sorteio concluido');
+  assertThrows(() => raffles.markWinner(admin.token, raffle.id, other.user.id), 'nao deve marcar ganhador depois de concluido');
+  assertThrows(() => raffles.drawWinners(admin.token, raffle.id), 'nao deve sortear depois de concluido');
+});
 let failures = 0;
 
 for (const item of tests) {
