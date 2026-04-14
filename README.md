@@ -58,7 +58,20 @@
 | `src/utils/raffle.ts` | Reune regras da cartela visual, disponibilidade e combinacao de numeros. |
 | `src/utils/whatsapp.ts` | Monta o link de WhatsApp com a mensagem da compra. |
 
+## `supabase`
+| Arquivo | O que e / o que faz |
+| --- | --- |
+| `supabase/schema.sql` | Define tabelas, enums, chaves, RLS e policies iniciais do banco Supabase. |
+
 ## `tests`
 | Arquivo | O que e / o que faz |
 | --- | --- |
 | `tests/backend.test.ts` | Testa auth, sorteios, participantes, ganhadores, estatisticas e exclusao. |
+
+## Lembrete De Seguranca
+| Item | O que revisar antes de producao |
+| --- | --- |
+| RLS do Supabase | Manter ativo e revisar policies antes de liberar dados reais. |
+| Variaveis `.env` | Nunca commitar chaves do Supabase, tokens ou `service_role`. |
+| Admin | Criar whitelist segura para administradores em vez de credencial hardcoded. |
+| Auditoria | Registrar acoes sensiveis do admin, como editar, fechar, concluir e excluir sorteios. |
